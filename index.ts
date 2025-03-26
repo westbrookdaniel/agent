@@ -235,9 +235,9 @@ for await (const part of result.fullStream) {
   if (part.type === "tool-result") {
     const fn = part.result.success ? green : red;
     const args = Object.entries(part.args)
-      .map(([key, value]) => `${gray(key)}: ${value}`)
+      .map(([key, value]) => `${gray(key + ":")} ${value}`)
       .join(gray(", "));
-    process.stdout.write(`\n\n${fn(part.toolName)} ${gray("-")} ${args}\n`);
+    process.stdout.write(`\n\n${fn(part.toolName)} ${args}\n`);
     const key = Object.keys(part.result).filter((k) => k !== "success")[0];
     let data = part.result[key];
     if (typeof data !== "string") data = JSON.stringify(data);
