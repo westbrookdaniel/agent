@@ -1,0 +1,17 @@
+{
+  "name": "agent",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^1.2.1",
+    "ai": "^4.2.5",
+    "yocto-spinner": "^0.2.1",
+    "yoctocolors": "^2.1.1"
+  }
+}
