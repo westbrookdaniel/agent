@@ -26,7 +26,6 @@ const permissions = {
 // Helper function to ask for permission
 const askPermission = (promptText: string) => {
   if (process.env.YOLO) {
-    process.stdout.write("\n");
     return true;
   }
   process.stdout.write("\n\n");
@@ -235,11 +234,15 @@ for await (const part of result.fullStream) {
   }
   if (part.type === "tool-result") {
     const fn = part.result.success ? green : red;
-    process.stdout.write(`\n${fn(part.toolName)}\n`);
+    const args = Object.entries(part.args)
+      .map(([key, value]) => `${gray(key)}: ${value}`)
+      .join(gray(", "));
+    process.stdout.write(`\n\n${fn(part.toolName)} ${gray("-")} ${args}\n`);
     const key = Object.keys(part.result).filter((k) => k !== "success")[0];
-    const data = part.result[key];
+    let data = part.result[key];
+    if (typeof data !== "string") data = JSON.stringify(data);
     process.stdout.write(`${gray(data.split("\n").slice(0, 5).join("\n"))}`);
-    process.stdout.write("\n");
+    process.stdout.write("\n\n");
   }
 }
 
