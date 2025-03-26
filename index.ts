@@ -1,5 +1,4 @@
 import { anthropic } from "@ai-sdk/anthropic";
-// import { xai } from "@ai-sdk/xai";
 import { streamText, tool } from "ai";
 import yocto from "yocto-spinner";
 import { red, gray, green } from "yoctocolors";
@@ -10,7 +9,6 @@ import child_process from "child_process";
 import { z } from "zod";
 
 const model = anthropic("claude-3-7-sonnet-20250219");
-// const model = xai("grok-2-1212");
 
 const exec = promisify(child_process.exec);
 
