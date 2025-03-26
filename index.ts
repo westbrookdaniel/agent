@@ -28,7 +28,6 @@ const askPermission = (promptText: string) => {
   process.stdout.write("\n\n");
   return new Promise((resolve) =>
     rl.question(`${green("?")} ${promptText} ${gray("(y/n)")} `, (answer) => {
-      process.stdout.write("\n\n");
       return resolve(answer.toLowerCase() === "y");
     }),
   );
@@ -233,10 +232,13 @@ for await (const part of result.fullStream) {
   if (part.type === "tool-result") {
     const fn = part.result.success ? green : red;
     process.stdout.write(`\n${fn(part.toolName)}\n`);
-    process.stdout.write(
-      gray(fn(part.result.message.split("\n").slice(0, 5).join("\n"))),
-    );
+    const key = Object.keys(part.result).filter((k) => k !== "success")[0];
+    const data = part.result[key];
+    process.stdout.write(`${gray(data.split("\n").slice(0, 5).join("\n"))}`);
+    process.stdout.write("\n");
   }
 }
 
 process.stdout.write("\n\n");
+
+process.exit(0);
