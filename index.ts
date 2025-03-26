@@ -1,7 +1,7 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { streamText, tool } from "ai";
 import yocto from "yocto-spinner";
-import { red, gray, green, blue } from "yoctocolors";
+import { red, gray, green } from "yoctocolors";
 import readline from "readline";
 import fs from "fs/promises";
 import { promisify } from "util";
@@ -24,12 +24,15 @@ const permissions = {
 };
 
 // Helper function to ask for permission
-const askPermission = (promptText: string) =>
-  new Promise((resolve) =>
-    rl.question(`${blue("?")} ${promptText} ${gray("(y/n)")}`, (answer) =>
-      resolve(answer.toLowerCase() === "y"),
-    ),
+const askPermission = (promptText: string) => {
+  process.stdout.write("\n\n");
+  return new Promise((resolve) =>
+    rl.question(`${green("?")} ${promptText} ${gray("(y/n)")} `, (answer) => {
+      process.stdout.write("\n\n");
+      return resolve(answer.toLowerCase() === "y");
+    }),
   );
+};
 
 // Tools
 const agentTool = tool({
