@@ -40,24 +40,6 @@ const askPermission = (promptText: string) => {
   );
 };
 
-// Tools
-const agentTool = tool({
-  description: "Runs a sub-agent to handle complex, multi-step tasks",
-  parameters: z.object({
-    task: z.string().describe("The task to perform"),
-  }),
-  execute: async ({ task }) => {
-    try {
-      return {
-        success: true,
-        message: `Sub-agent executed task: ${task}`,
-      };
-    } catch (error: any) {
-      return { success: false, message: error.message };
-    }
-  },
-});
-
 const bashTool = tool({
   description: "Executes shell commands in your environment",
   parameters: z.object({
@@ -208,7 +190,6 @@ const fileWriteTool = tool({
 });
 
 export const tools = {
-  agent: agentTool,
   bash: bashTool,
   glob: globTool,
   grep: grepTool,
