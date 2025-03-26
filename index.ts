@@ -233,6 +233,10 @@ const result = streamText({
 for await (const part of result.fullStream) {
   if (spinner.isSpinning) spinner.stop().clear();
 
+  if (part.type === "error") {
+    process.stdout.write(red(part.error));
+  }
+
   if (part.type === "text-delta") {
     process.stdout.write(part.textDelta);
   }
