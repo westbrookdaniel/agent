@@ -1,5 +1,5 @@
 import { anthropic } from "@ai-sdk/anthropic";
-import { streamText, tool } from "ai";
+import { streamText } from "ai";
 import yocto from "yocto-spinner";
 import { red, gray } from "yoctocolors";
 import readline from "readline";
@@ -24,12 +24,12 @@ const permissions = {
 };
 
 // Helper function to ask for permission
-const askPermission = (promptText: string) =>
+const askPermission = (promptText) =>
   new Promise((resolve) =>
     rl.question(promptText, (answer) => resolve(answer.toLowerCase() === "y")),
   );
 
-const agentTool = tool({
+const agentTool = {
   name: "agent",
   description: "Runs a sub-agent to handle complex, multi-step tasks",
   parameters: {
@@ -43,9 +43,9 @@ const agentTool = tool({
     success: true,
     message: `Sub-agent executed task: ${task}`,
   }),
-});
+};
 
-const bashTool = tool({
+const bashTool = {
   name: "bash",
   description: "Executes shell commands in your environment",
   parameters: {
@@ -77,9 +77,9 @@ const bashTool = tool({
       return { success: false, message: error.message };
     }
   },
-});
+};
 
-const globTool = tool({
+const globTool = {
   name: "glob",
   description: "Finds files based on pattern matching",
   parameters: {
@@ -97,9 +97,9 @@ const globTool = tool({
       return { success: false, message: error.message };
     }
   },
-});
+};
 
-const grepTool = tool({
+const grepTool = {
   name: "grep",
   description: "Searches for patterns in file contents",
   parameters: {
@@ -120,9 +120,9 @@ const grepTool = tool({
       return { success: false, message: error.message };
     }
   },
-});
+};
 
-const lsTool = tool({
+const lsTool = {
   name: "ls",
   description: "Lists files and directories",
   parameters: {
@@ -140,9 +140,9 @@ const lsTool = tool({
       return { success: false, message: error.message };
     }
   },
-});
+};
 
-const fileReadTool = tool({
+const fileReadTool = {
   name: "file_read",
   description: "Reads the contents of files",
   parameters: {
@@ -160,9 +160,9 @@ const fileReadTool = tool({
       return { success: false, message: error.message };
     }
   },
-});
+};
 
-const fileEditTool = tool({
+const fileEditTool = {
   name: "file_edit",
   description: "Makes targeted edits to specific files",
   parameters: {
@@ -195,9 +195,9 @@ const fileEditTool = tool({
       return { success: false, message: error.message };
     }
   },
-});
+};
 
-const fileWriteTool = tool({
+const fileWriteTool = {
   name: "file_write",
   description: "Creates or overwrites files",
   parameters: {
@@ -227,7 +227,67 @@ const fileWriteTool = tool({
       return { success: false, message: error.message };
     }
   },
-});
+};
+
+const notebookReadTool = {
+  name: "notebook_read",
+  description: "Reads and displays Jupyter notebook contents",
+  parameters: {
+    type: "object",
+    properties: {
+      filePath: { type: "string", description: "Path to the notebook" },
+    },
+    required: ["filePath"],
+  },
+  execute: async ({ filePath }) => {
+    try {
+      const content = await fs.readFile(filePath, "utf8");
+      const notebook = JSON.parse(content);
+      return { success: true, notebook: JSON.stringify(notebook, null, 2) };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  },
+};
+
+const notebookEditTool = {
+  name: "notebook_edit",
+  description: "Modifies Jupyter notebook cells",
+  parameters: {
+    type: "object",
+    properties: {
+      filePath: { type: "string", description: "Path to the notebook" },
+      cellIndex: { type: "integer", description: "Index of the cell to edit" },
+      newContent: { type: "string", description: "New content for the cell" },
+    },
+    required: ["filePath", "cellIndex", "newContent"],
+  },
+  execute: async ({ filePath, cellIndex, newContent }) => {
+    if (!permissions.notebookEditAllowed) {
+      const allow = await askPermission(`Allow editing notebooks? (y/n) `);
+      if (allow) {
+        permissions.notebookEditAllowed = true;
+      } else {
+        return {
+          success: false,
+          message: "Permission denied for notebook editing",
+        };
+      }
+    }
+    try {
+      const content = await fs.readFile(filePath, "utf8");
+      const notebook = JSON.parse(content);
+      if (cellIndex < 0 || cellIndex >= notebook.cells.length) {
+        return { success: false, message: "Cell index out of range" };
+      }
+      notebook.cells[cellIndex].source = newContent.split("\n");
+      await fs.writeFile(filePath, JSON.stringify(notebook, null, 2), "utf8");
+      return { success: true, message: "Notebook cell edited successfully" };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  },
+};
 
 export const tools = {
   agent: agentTool,
@@ -238,31 +298,6 @@ export const tools = {
   file_read: fileReadTool,
   file_edit: fileEditTool,
   file_write: fileWriteTool,
+  notebook_read: notebookReadTool,
+  notebook_edit: notebookEditTool,
 };
-
-const prompt = process.argv.slice(2).join(" ");
-
-process.stdout.write("\n");
-const spinner = yocto({ text: "Thinking", color: "green" }).start();
-
-const result = streamText({
-  model: anthropic("claude-3-7-sonnet-20250219"),
-  prompt,
-  maxSteps: 25,
-  tools,
-});
-
-for await (const part of result.fullStream) {
-  if (spinner.isSpinning) spinner.stop().clear();
-
-  if (part.type === "text-delta") {
-    process.stdout.write(part.textDelta);
-  }
-  if (part.type === "tool-result") {
-    process.stdout.write(
-      `${(part.result.success ? gray : red)(part.result.message)}\n`,
-    );
-  }
-}
-
-process.stdout.write("\n\n");
