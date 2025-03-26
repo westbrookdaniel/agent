@@ -25,7 +25,10 @@ const permissions = {
 
 // Helper function to ask for permission
 const askPermission = (promptText: string) => {
-  if (process.env.YOLO) return true;
+  if (process.env.YOLO) {
+    process.stdout.write("\n");
+    return true;
+  }
   process.stdout.write("\n\n");
   return new Promise((resolve) =>
     rl.question(`${green("?")} ${promptText} ${gray("(y/n)")} `, (answer) => {
