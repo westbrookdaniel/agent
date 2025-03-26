@@ -1,5 +1,8 @@
 # Agent
 
+> [!WARNING]  
+> No guarantees that this works, or works well
+
 A command-line AI agent tool built that provides a Claude Code or Cursor Agent like experience.
 
 ## Features
