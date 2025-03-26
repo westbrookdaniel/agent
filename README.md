@@ -4,6 +4,7 @@ A command-line AI agent tool built that provides a Claude Code or Cursor Agent l
 
 ## Features
 
+- **Single File**: Simple to setup, tweak, and refactor
 - **Permission-Based Security**: Asks for permission before executing potentially dangerous operations
 - **Built-in Tools**:
   - `bash`: Executes shell commands with permission controls
