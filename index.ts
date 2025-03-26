@@ -8,6 +8,8 @@ import { promisify } from "util";
 import child_process from "child_process";
 import { z } from "zod";
 
+const model = anthropic("claude-3-7-sonnet-20250219");
+
 const exec = promisify(child_process.exec);
 
 const rl = readline.createInterface({
@@ -220,7 +222,7 @@ process.stdout.write("\n");
 const spinner = yocto({ text: "Thinking", color: "green" }).start();
 
 const result = streamText({
-  model: anthropic("claude-3-7-sonnet-20250219"),
+  model,
   prompt,
   maxSteps: 25,
   tools,
