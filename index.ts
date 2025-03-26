@@ -1,7 +1,7 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { streamText, tool } from "ai";
 import yocto from "yocto-spinner";
-import { red, gray } from "yoctocolors";
+import { red, gray, green, blue } from "yoctocolors";
 import readline from "readline";
 import fs from "fs/promises";
 import { promisify } from "util";
@@ -26,7 +26,9 @@ const permissions = {
 // Helper function to ask for permission
 const askPermission = (promptText: string) =>
   new Promise((resolve) =>
-    rl.question(promptText, (answer) => resolve(answer.toLowerCase() === "y")),
+    rl.question(`${blue("?")} ${promptText} ${gray("(y/n)")}`, (answer) =>
+      resolve(answer.toLowerCase() === "y"),
+    ),
   );
 
 // Tools
@@ -56,9 +58,7 @@ const bashTool = tool({
     try {
       const commandName = command.split(" ")[0];
       if (!permissions.bashAllowedCommands.has(commandName)) {
-        const allow = await askPermission(
-          `Allow executing command '${commandName}'? (y/n) `,
-        );
+        const allow = await askPermission(`Allow executing '${commandName}'`);
         if (allow) {
           permissions.bashAllowedCommands.add(commandName);
         } else {
@@ -151,7 +151,7 @@ const fileEditTool = tool({
   execute: async ({ filePath, search, replace }) => {
     try {
       if (!permissions.fileEditAllowed) {
-        const allow = await askPermission(`Allow editing files? (y/n) `);
+        const allow = await askPermission(`Allow editing '${filePath}'`);
         if (allow) {
           permissions.fileEditAllowed = true;
         } else {
@@ -180,7 +180,7 @@ const fileWriteTool = tool({
   execute: async ({ filePath, content }) => {
     try {
       if (!permissions.fileWriteAllowed) {
-        const allow = await askPermission(`Allow writing files? (y/n) `);
+        const allow = await askPermission(`Allow writing '${filePath}'`);
         if (allow) {
           permissions.fileWriteAllowed = true;
         } else {
@@ -228,8 +228,10 @@ for await (const part of result.fullStream) {
     process.stdout.write(part.textDelta);
   }
   if (part.type === "tool-result") {
+    const fn = part.result.success ? green : red;
+    process.stdout.write(`\n${fn(part.toolName)}\n`);
     process.stdout.write(
-      `${(part.result.success ? gray : red)(part.result.message)}\n`,
+      gray(fn(part.result.message.split("\n").slice(0, 5).join("\n"))),
     );
   }
 }
