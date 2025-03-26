@@ -6,7 +6,7 @@ import readline from "readline";
 import fs from "fs/promises";
 import { promisify } from "util";
 import child_process from "child_process";
-import glob from "glob";
+import { z } from "zod";
 
 const exec = promisify(child_process.exec);
 
@@ -29,201 +29,170 @@ const askPermission = (promptText: string) =>
     rl.question(promptText, (answer) => resolve(answer.toLowerCase() === "y")),
   );
 
+// Tools
 const agentTool = tool({
-  name: "agent",
   description: "Runs a sub-agent to handle complex, multi-step tasks",
-  parameters: {
-    type: "object",
-    properties: {
-      task: { type: "string", description: "The task to perform" },
-    },
-    required: ["task"],
-  },
-  execute: async ({ task }) => ({
-    success: true,
-    message: `Sub-agent executed task: ${task}`,
+  parameters: z.object({
+    task: z.string().describe("The task to perform"),
   }),
+  execute: async ({ task }) => {
+    try {
+      return {
+        success: true,
+        message: `Sub-agent executed task: ${task}`,
+      };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  },
 });
 
 const bashTool = tool({
-  name: "bash",
   description: "Executes shell commands in your environment",
-  parameters: {
-    type: "object",
-    properties: {
-      command: { type: "string", description: "The shell command to execute" },
-    },
-    required: ["command"],
-  },
+  parameters: z.object({
+    command: z.string().describe("The shell command to execute"),
+  }),
   execute: async ({ command }) => {
-    const commandName = command.split(" ")[0];
-    if (!permissions.bashAllowedCommands.has(commandName)) {
-      const allow = await askPermission(
-        `Allow executing command '${commandName}'? (y/n) `,
-      );
-      if (allow) {
-        permissions.bashAllowedCommands.add(commandName);
-      } else {
-        return {
-          success: false,
-          message: `Permission denied for command '${commandName}'`,
-        };
-      }
-    }
     try {
+      const commandName = command.split(" ")[0];
+      if (!permissions.bashAllowedCommands.has(commandName)) {
+        const allow = await askPermission(
+          `Allow executing command '${commandName}'? (y/n) `,
+        );
+        if (allow) {
+          permissions.bashAllowedCommands.add(commandName);
+        } else {
+          return {
+            success: false,
+            message: `Permission denied for command '${commandName}'`,
+          };
+        }
+      }
       const { stdout, stderr } = await exec(command);
       return { success: true, output: stdout + stderr };
-    } catch (error) {
+    } catch (error: any) {
       return { success: false, message: error.message };
     }
   },
 });
 
 const globTool = tool({
-  name: "glob",
   description: "Finds files based on pattern matching",
-  parameters: {
-    type: "object",
-    properties: {
-      pattern: { type: "string", description: "The glob pattern" },
-    },
-    required: ["pattern"],
-  },
+  parameters: z.object({
+    pattern: z.string().describe("The glob pattern"),
+  }),
   execute: async ({ pattern }) => {
     try {
-      const files = glob.sync(pattern);
+      const iter = new Bun.Glob(pattern).scan();
+      const files = [];
+      for await (const value of iter) files.push(value);
       return { success: true, files };
-    } catch (error) {
+    } catch (error: any) {
       return { success: false, message: error.message };
     }
   },
 });
 
 const grepTool = tool({
-  name: "grep",
   description: "Searches for patterns in file contents",
-  parameters: {
-    type: "object",
-    properties: {
-      filePath: { type: "string", description: "Path to the file" },
-      pattern: { type: "string", description: "Regex pattern to search" },
-    },
-    required: ["filePath", "pattern"],
-  },
+  parameters: z.object({
+    filePath: z.string().describe("Path to the file"),
+    pattern: z.string().describe("Regex pattern to search"),
+  }),
   execute: async ({ filePath, pattern }) => {
     try {
       const content = await fs.readFile(filePath, "utf8");
       const regex = new RegExp(pattern);
       const matches = content.split("\n").filter((line) => regex.test(line));
       return { success: true, matches };
-    } catch (error) {
+    } catch (error: any) {
       return { success: false, message: error.message };
     }
   },
 });
 
 const lsTool = tool({
-  name: "ls",
   description: "Lists files and directories",
-  parameters: {
-    type: "object",
-    properties: {
-      dirPath: { type: "string", description: "Directory path" },
-    },
-    required: ["dirPath"],
-  },
+  parameters: z.object({
+    dirPath: z.string().describe("Directory path"),
+  }),
   execute: async ({ dirPath }) => {
     try {
       const items = await fs.readdir(dirPath);
       return { success: true, items };
-    } catch (error) {
+    } catch (error: any) {
       return { success: false, message: error.message };
     }
   },
 });
 
 const fileReadTool = tool({
-  name: "file_read",
   description: "Reads the contents of files",
-  parameters: {
-    type: "object",
-    properties: {
-      filePath: { type: "string", description: "Path to the file" },
-    },
-    required: ["filePath"],
-  },
+  parameters: z.object({
+    filePath: z.string().describe("Path to the file"),
+  }),
   execute: async ({ filePath }) => {
     try {
       const content = await fs.readFile(filePath, "utf8");
       return { success: true, content };
-    } catch (error) {
+    } catch (error: any) {
       return { success: false, message: error.message };
     }
   },
 });
 
 const fileEditTool = tool({
-  name: "file_edit",
   description: "Makes targeted edits to specific files",
-  parameters: {
-    type: "object",
-    properties: {
-      filePath: { type: "string", description: "Path to the file" },
-      search: { type: "string", description: "String to replace" },
-      replace: { type: "string", description: "Replacement string" },
-    },
-    required: ["filePath", "search", "replace"],
-  },
+  parameters: z.object({
+    filePath: z.string().describe("Path to the file"),
+    search: z.string().describe("String to replace"),
+    replace: z.string().describe("Replacement string"),
+  }),
   execute: async ({ filePath, search, replace }) => {
-    if (!permissions.fileEditAllowed) {
-      const allow = await askPermission(`Allow editing files? (y/n) `);
-      if (allow) {
-        permissions.fileEditAllowed = true;
-      } else {
-        return {
-          success: false,
-          message: "Permission denied for file editing",
-        };
-      }
-    }
     try {
+      if (!permissions.fileEditAllowed) {
+        const allow = await askPermission(`Allow editing files? (y/n) `);
+        if (allow) {
+          permissions.fileEditAllowed = true;
+        } else {
+          return {
+            success: false,
+            message: "Permission denied for file editing",
+          };
+        }
+      }
       const content = await fs.readFile(filePath, "utf8");
       const newContent = content.replace(search, replace);
       await fs.writeFile(filePath, newContent, "utf8");
       return { success: true, message: "File edited successfully" };
-    } catch (error) {
+    } catch (error: any) {
       return { success: false, message: error.message };
     }
   },
 });
 
 const fileWriteTool = tool({
-  name: "file_write",
   description: "Creates or overwrites files",
-  parameters: {
-    type: "object",
-    properties: {
-      filePath: { type: "string", description: "Path to the file" },
-      content: { type: "string", description: "Content to write" },
-    },
-    required: ["filePath", "content"],
-  },
+  parameters: z.object({
+    filePath: z.string().describe("Path to the file"),
+    content: z.string().describe("Content to write"),
+  }),
   execute: async ({ filePath, content }) => {
-    if (!permissions.fileWriteAllowed) {
-      const allow = await askPermission(`Allow writing files? (y/n) `);
-      if (allow) {
-        permissions.fileWriteAllowed = true;
-      } else {
-        return {
-          success: false,
-          message: "Permission denied for file writing",
-        };
-      }
-    }
     try {
+      if (!permissions.fileWriteAllowed) {
+        const allow = await askPermission(`Allow writing files? (y/n) `);
+        if (allow) {
+          permissions.fileWriteAllowed = true;
+        } else {
+          return {
+            success: false,
+            message: "Permission denied for file writing",
+          };
+        }
+      }
       await fs.writeFile(filePath, content, "utf8");
       return { success: true, message: "File written successfully" };
-    } catch (error) {
+    } catch (error: any) {
       return { success: false, message: error.message };
     }
   },
