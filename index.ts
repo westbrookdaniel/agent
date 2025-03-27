@@ -219,12 +219,16 @@ for await (const part of result.fullStream) {
   if (part.type === "text-delta") {
     process.stdout.write(part.textDelta);
   }
-  if (part.type === "tool-result") {
+
+  if (part.type === "tool-call") {
     const fn = part.result.success ? green : red;
     const args = Object.entries(part.args)
       .map(([key, value]) => `${gray(key + ":")} ${String(value).slice(-50)}`)
       .join(gray(", "));
     process.stdout.write(`\n\n${fn(part.toolName)} ${args}\n`);
+  }
+
+  if (part.type === "tool-result") {
     const key = Object.keys(part.result).filter((k) => k !== "success")[0];
     let data = part.result[key];
     if (typeof data !== "string") data = JSON.stringify(data);
