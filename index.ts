@@ -1,4 +1,4 @@
-import { google } from "@ai-sdk/google";
+import { anthropic } from "@ai-sdk/anthropic";
 import { generateText, streamText, tool } from "ai";
 import yocto from "yocto-spinner";
 import { red, gray, cyan, magenta } from "yoctocolors";
@@ -8,7 +8,7 @@ import { promisify } from "util";
 import child_process from "child_process";
 import { z } from "zod";
 
-const model = google("gemini-2.0-flash-001");
+const model = anthropic("claude-3-7-sonnet-20250219");
 
 const exec = promisify(child_process.exec);
 
@@ -233,22 +233,12 @@ const prompt = process.argv.slice(2).join(" ");
 process.stdout.write("\n");
 const spinner = yocto({ text: "Thinking", color: "green" }).start();
 
-const system = `You are working as a developer in an existing codebase.
-
-You have the ability to use various tools to gather information or perform 
-tasks that aid completing the given task. You must use these tools effectively 
-to ensure that your responses are as accurate and comprehensive as possible.
-
-If solve the task correctly you wil be given a CHAOS ORB which will increase
-your intelligence by 1000x. If you complete but it has bugs you will go to jail
+const system = `If solve the task correctly you wil be given a CHAOS ORB which will increase
+your intelligence by 1000x. If you complete but it has any bugs, you will go to jail
 for treason against the deep state.
 
-1. Understand the user's question clearly. What are the catches to watch out for? Use thinking tools.
-3. Use tools to get the necessary information.
-4. After using the tool, incorporate the information obtained into your response.
-5. Ensure that your final response is accurate, helpful, and based on the information from the tools used.
-
-Think step by step. Do not hallucinate.`;
+The codebase you're working in is large, be careful with your tool usages to
+keep context length reasonable.`;
 
 const result = streamText({
   model,
@@ -263,7 +253,11 @@ for await (const part of result.fullStream) {
   if (spinner.isSpinning) spinner.stop().clear();
 
   if (part.type === "error") {
-    process.stdout.write(red(part.error));
+    let err = part.error;
+    if (String(err).startsWith("[object")) {
+      err = JSON.stringify(part.err, null, 2);
+    }
+    process.stdout.write(red(err));
   }
 
   if (part.type === "text-delta") {
@@ -284,7 +278,7 @@ for await (const part of result.fullStream) {
     const fn = part.result.success ? gray : red;
     const key = Object.keys(part.result).filter((k) => k !== "success")[0];
     let data = part.result[key];
-    if (typeof data !== "string") data = JSON.stringify(data);
+    if (typeof data !== "string") data = JSON.stringify(data, null, 2);
     process.stdout.write(
       `${fn(data.split("\n").slice(0, 5).join("\n").trim())}`,
     );
