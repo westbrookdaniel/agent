@@ -1,7 +1,7 @@
 import { anthropic } from "@ai-sdk/anthropic";
-import { streamText, tool } from "ai";
+import { generateText, streamText, tool } from "ai";
 import yocto from "yocto-spinner";
-import { red, gray, green, cyan } from "yoctocolors";
+import { red, gray, cyan, magenta } from "yoctocolors";
 import readline from "readline";
 import fs from "fs/promises";
 import { promisify } from "util";
@@ -30,13 +30,42 @@ const askPermission = (promptText: string) => {
   if (process.env.YOLO) {
     return true;
   }
-  process.stdout.write("\n\n");
   return new Promise((resolve) =>
-    rl.question(`${green("?")} ${promptText} ${gray("(y/n)")} `, (answer) => {
+    rl.question(`${magenta("?")} ${promptText} ${gray("(y/n)")} `, (answer) => {
+      process.stdout.write("\n");
       return resolve(answer.toLowerCase() === "y");
     }),
   );
 };
+
+const thinkTool = tool({
+  description:
+    "Use the tool to think about something. It will not obtain new information. Use it when complex reasoning is needed.",
+  parameters: z.object({
+    thought: z.string().describe("A thought to think about"),
+  }),
+  execute: async ({ thought }) => {
+    try {
+      const { text } = await generateText({
+        model,
+        prompt: "Think about this step by step:\n\n" + thought,
+      });
+
+      return { success: true, thoughts: text };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  },
+});
+
+const stopTool = tool({
+  description: "Use the tool when the task has been completed.",
+  parameters: z.object({}),
+  execute: async () => {
+    process.exit(0);
+    return { success: true };
+  },
+});
 
 const bashTool = tool({
   description: "Executes shell commands in your environment",
@@ -188,6 +217,8 @@ const fileWriteTool = tool({
 });
 
 export const tools = {
+  think: thinkTool,
+  stopTool: stopTool,
   bash: bashTool,
   glob: globTool,
   grep: grepTool,
@@ -205,6 +236,7 @@ const spinner = yocto({ text: "Thinking", color: "green" }).start();
 const result = streamText({
   model,
   prompt,
+  toolChoice: "required",
   maxSteps: 25,
   tools,
 });
@@ -229,17 +261,17 @@ for await (const part of result.fullStream) {
         return `${gray(key + ":")} ${arg}`;
       })
       .join(gray(", "));
-    process.stdout.write(`\n\n${cyan(part.toolName)} ${args}\n`);
+    process.stdout.write(`${cyan(part.toolName)} ${args}\n`);
 
     const fn = part.result.success ? gray : red;
     const key = Object.keys(part.result).filter((k) => k !== "success")[0];
     let data = part.result[key];
     if (typeof data !== "string") data = JSON.stringify(data);
-    process.stdout.write(`${fn(data.split("\n").slice(0, 5).join("\n"))}`);
+    process.stdout.write(
+      `${fn(data.split("\n").slice(0, 5).join("\n").trim())}`,
+    );
     process.stdout.write("\n\n");
   }
 }
-
-process.stdout.write("\n\n");
 
 process.exit(0);
