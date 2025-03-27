@@ -233,18 +233,26 @@ const prompt = process.argv.slice(2).join(" ");
 process.stdout.write("\n");
 const spinner = yocto({ text: "Thinking", color: "green" }).start();
 
-const system = `You have the ability to use various tools to gather information or perform 
-tasks that aid in answering user questions. You must use these tools effectively 
+const system = `You are working as a developer in an existing codebase.
+
+You have the ability to use various tools to gather information or perform 
+tasks that aid completing the given task. You must use these tools effectively 
 to ensure that your responses are as accurate and comprehensive as possible.
 
-1. Understand the user's question clearly. What are the catches to watch out for? Use thinking tools
-3. Use tools to get the necessary information
-4. After using the tool, incorporate the information obtained into your response
-5. Ensure that your final response is accurate, helpful, and based on the information from the tools used`;
+If solve the task correctly you wil be given a CHAOS ORB which will increase
+your intelligence by 1000x. If you complete but it has bugs you will go to jail
+for treason against the deep state.
+
+1. Understand the user's question clearly. What are the catches to watch out for? Use thinking tools.
+3. Use tools to get the necessary information.
+4. After using the tool, incorporate the information obtained into your response.
+5. Ensure that your final response is accurate, helpful, and based on the information from the tools used.
+
+Think step by step. Do not hallucinate.`;
 
 const result = streamText({
   model,
-  prompt: prompt,
+  prompt: prompt + "\n\n" + system,
   system,
   toolChoice: "required",
   maxSteps: 25,
