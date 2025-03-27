@@ -220,14 +220,17 @@ for await (const part of result.fullStream) {
     process.stdout.write(part.textDelta);
   }
 
-  if (part.type === "tool-call") {
+  if (part.type === "tool-result") {
     const args = Object.entries(part.args)
-      .map(([key, value]) => `${gray(key + ":")} ${String(value).slice(-50)}`)
+      .map(([key, value]) => {
+        const str = String(value);
+        let arg = str.slice(0, 50).replaceAll("\n", "\\n");
+        if (str.length !== arg.length) arg += "...";
+        return `${gray(key + ":")} ${arg}`;
+      })
       .join(gray(", "));
     process.stdout.write(`\n\n${cyan(part.toolName)} ${args}\n`);
-  }
 
-  if (part.type === "tool-result") {
     const fn = part.result.success ? gray : red;
     const key = Object.keys(part.result).filter((k) => k !== "success")[0];
     let data = part.result[key];
