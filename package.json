@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.2.1",
+    "@ai-sdk/google": "^1.2.3",
     "ai": "^4.2.5",
     "yocto-spinner": "^0.2.1",
     "yoctocolors": "^2.1.1"

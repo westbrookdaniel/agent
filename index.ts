@@ -1,4 +1,4 @@
-import { anthropic } from "@ai-sdk/anthropic";
+import { google } from "@ai-sdk/google";
 import { generateText, streamText, tool } from "ai";
 import yocto from "yocto-spinner";
 import { red, gray, cyan, magenta } from "yoctocolors";
@@ -8,7 +8,7 @@ import { promisify } from "util";
 import child_process from "child_process";
 import { z } from "zod";
 
-const model = anthropic("claude-3-7-sonnet-20250219");
+const model = google("gemini-2.0-flash-001");
 
 const exec = promisify(child_process.exec);
 
@@ -233,9 +233,19 @@ const prompt = process.argv.slice(2).join(" ");
 process.stdout.write("\n");
 const spinner = yocto({ text: "Thinking", color: "green" }).start();
 
+const system = `You have the ability to use various tools to gather information or perform 
+tasks that aid in answering user questions. You must use these tools effectively 
+to ensure that your responses are as accurate and comprehensive as possible.
+
+1. Understand the user's question clearly. What are the catches to watch out for? Use thinking tools
+3. Use tools to get the necessary information
+4. After using the tool, incorporate the information obtained into your response
+5. Ensure that your final response is accurate, helpful, and based on the information from the tools used`;
+
 const result = streamText({
   model,
-  prompt,
+  prompt: prompt,
+  system,
   toolChoice: "required",
   maxSteps: 25,
   tools,
