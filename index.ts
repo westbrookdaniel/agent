@@ -1,7 +1,7 @@
 import { anthropic } from "@ai-sdk/anthropic";
 import { streamText, tool } from "ai";
 import yocto from "yocto-spinner";
-import { red, gray, green } from "yoctocolors";
+import { red, gray, green, cyan } from "yoctocolors";
 import readline from "readline";
 import fs from "fs/promises";
 import { promisify } from "util";
@@ -221,18 +221,18 @@ for await (const part of result.fullStream) {
   }
 
   if (part.type === "tool-call") {
-    const fn = part.result.success ? green : red;
     const args = Object.entries(part.args)
       .map(([key, value]) => `${gray(key + ":")} ${String(value).slice(-50)}`)
       .join(gray(", "));
-    process.stdout.write(`\n\n${fn(part.toolName)} ${args}\n`);
+    process.stdout.write(`\n\n${cyan(part.toolName)} ${args}\n`);
   }
 
   if (part.type === "tool-result") {
+    const fn = part.result.success ? gray : red;
     const key = Object.keys(part.result).filter((k) => k !== "success")[0];
     let data = part.result[key];
     if (typeof data !== "string") data = JSON.stringify(data);
-    process.stdout.write(`${gray(data.split("\n").slice(0, 5).join("\n"))}`);
+    process.stdout.write(`${fn(data.split("\n").slice(0, 5).join("\n"))}`);
     process.stdout.write("\n\n");
   }
 }
