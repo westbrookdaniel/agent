@@ -277,9 +277,8 @@ for await (const part of result.fullStream) {
     process.stdout.write(
       `${fn(data.split("\n").slice(0, 5).join("\n").trim())}`,
     );
-    process.stdout.write("\n\n");
   }
 }
 
-process.stdout.write("\n");
+process.stdout.write("\n\n");
 process.exit(0);
