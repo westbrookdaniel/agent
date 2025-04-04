@@ -1,4 +1,3 @@
-import { anthropic } from "@ai-sdk/anthropic";
 import { generateText, streamText, tool } from "ai";
 import yocto from "yocto-spinner";
 import { red, gray, cyan, magenta } from "yoctocolors";
@@ -7,8 +6,11 @@ import fs from "fs/promises";
 import { promisify } from "util";
 import child_process from "child_process";
 import { z } from "zod";
+import { bedrock } from "@ai-sdk/amazon-bedrock";
+// import { anthropic } from "@ai-sdk/anthropic";
 
-const model = anthropic("claude-3-7-sonnet-20250219");
+const model = bedrock("anthropic.claude-3-5-sonnet-20241022-v2:0");
+// const model = anthropic("claude-3-5-sonnet-20241022");
 
 const exec = promisify(child_process.exec);
 
@@ -30,12 +32,16 @@ const askPermission = (promptText: string) => {
   if (process.env.YOLO) {
     return true;
   }
-  return new Promise((resolve) =>
-    rl.question(`${magenta("?")} ${promptText} ${gray("(y/n)")} `, (answer) => {
-      process.stdout.write("\n");
-      return resolve(answer.toLowerCase() === "y");
-    }),
-  );
+  return new Promise((resolve) => {
+    process.stdout.write("\n\n");
+    return rl.question(
+      `${magenta("?")} ${promptText} ${gray("(y/n)")} `,
+      (answer) => {
+        process.stdout.write("\n");
+        return resolve(answer.toLowerCase() === "y");
+      },
+    );
+  });
 };
 
 const thinkTool = tool({
@@ -55,15 +61,6 @@ const thinkTool = tool({
     } catch (error: any) {
       return { success: false, message: error.message };
     }
-  },
-});
-
-const stopTool = tool({
-  description: "Use the tool when the task has been completed.",
-  parameters: z.object({}),
-  execute: async () => {
-    process.exit(0);
-    return { success: true };
   },
 });
 
@@ -218,7 +215,6 @@ const fileWriteTool = tool({
 
 export const tools = {
   think: thinkTool,
-  stopTool: stopTool,
   bash: bashTool,
   glob: globTool,
   grep: grepTool,
@@ -244,7 +240,6 @@ const result = streamText({
   model,
   prompt: prompt + "\n\n" + system,
   system,
-  toolChoice: "required",
   maxSteps: 25,
   tools,
 });
@@ -286,4 +281,5 @@ for await (const part of result.fullStream) {
   }
 }
 
+process.stdout.write("\n");
 process.exit(0);

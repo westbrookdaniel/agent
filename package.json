@@ -13,6 +13,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@ai-sdk/amazon-bedrock": "^2.2.4",
     "@ai-sdk/anthropic": "^1.2.1",
     "@ai-sdk/google": "^1.2.3",
     "ai": "^4.2.5",
