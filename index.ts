@@ -6,11 +6,9 @@ import fs from "fs/promises";
 import { promisify } from "util";
 import child_process from "child_process";
 import { z } from "zod";
-import { bedrock } from "@ai-sdk/amazon-bedrock";
-// import { anthropic } from "@ai-sdk/anthropic";
+import { xai } from "@ai-sdk/xai";
 
-const model = bedrock("anthropic.claude-3-5-sonnet-20241022-v2:0");
-// const model = anthropic("claude-3-5-sonnet-20241022");
+const model = xai("grok-3-mini-beta");
 
 const exec = promisify(child_process.exec);
 
@@ -33,7 +31,6 @@ const askPermission = (promptText: string) => {
     return true;
   }
   return new Promise((resolve) => {
-    process.stdout.write("\n\n");
     return rl.question(
       `${magenta("?")} ${promptText} ${gray("(y/n)")} `,
       (answer) => {
@@ -248,9 +245,9 @@ for await (const part of result.fullStream) {
   if (spinner.isSpinning) spinner.stop().clear();
 
   if (part.type === "error") {
-    let err = part.error;
+    let err: any = part.error;
     if (String(err).startsWith("[object")) {
-      err = JSON.stringify(part.err, null, 2);
+      err = JSON.stringify(part.error, null, 2);
     }
     process.stdout.write(red(err));
   }
@@ -272,10 +269,10 @@ for await (const part of result.fullStream) {
 
     const fn = part.result.success ? gray : red;
     const key = Object.keys(part.result).filter((k) => k !== "success")[0];
-    let data = part.result[key];
+    let data = (part.result as any)[key];
     if (typeof data !== "string") data = JSON.stringify(data, null, 2);
     process.stdout.write(
-      `${fn(data.split("\n").slice(0, 5).join("\n").trim())}`,
+      `${fn(data.split("\n").slice(0, 5).join("\n").trim())}\n\n`,
     );
   }
 }

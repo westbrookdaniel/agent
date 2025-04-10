@@ -10,14 +10,16 @@
     "@types/bun": "latest"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.8.2"
   },
   "dependencies": {
-    "@ai-sdk/amazon-bedrock": "^2.2.4",
-    "@ai-sdk/anthropic": "^1.2.1",
-    "@ai-sdk/google": "^1.2.3",
-    "ai": "^4.2.5",
+    "@ai-sdk/amazon-bedrock": "^2.2.7",
+    "@ai-sdk/anthropic": "^1.2.9",
+    "@ai-sdk/google": "^1.2.10",
+    "@ai-sdk/xai": "^1.2.10",
+    "ai": "^4.3.4",
     "yocto-spinner": "^0.2.1",
     "yoctocolors": "^2.1.1"
-  }
+  },
+  "packageManager": "yarn@4.0.2+sha512.4e502bea682e7d8004561f916f1da2dfbe6f718024f6aa50bf8cd86f38ea3a94a7f1bf854a9ca666dd8eafcfb8d44baaa91bf5c7876e79a7aeac952c332f0e88"
 }
