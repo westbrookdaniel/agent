@@ -36,30 +36,10 @@ const askPermission = (promptText: string) => {
       (answer) => {
         process.stdout.write("\n");
         return resolve(answer.toLowerCase() === "y");
-      },
+      }
     );
   });
 };
-
-const thinkTool = tool({
-  description:
-    "Use the tool to think about something. It will not obtain new information. Use it when complex reasoning is needed.",
-  parameters: z.object({
-    thought: z.string().describe("A thought to think about"),
-  }),
-  execute: async ({ thought }) => {
-    try {
-      const { text } = await generateText({
-        model,
-        prompt: "Think about this step by step:\n\n" + thought,
-      });
-
-      return { success: true, thoughts: text };
-    } catch (error: any) {
-      return { success: false, message: error.message };
-    }
-  },
-});
 
 const bashTool = tool({
   description: "Executes shell commands in your environment",
@@ -210,8 +190,12 @@ const fileWriteTool = tool({
   },
 });
 
-export const tools = {
-  think: thinkTool,
+const prompt = process.argv.slice(2).join(" ");
+
+process.stdout.write("\n");
+const spinner = yocto({ text: "Thinking", color: "green" }).start();
+
+export const AGENT_TOOLS = {
   bash: bashTool,
   glob: globTool,
   grep: grepTool,
@@ -221,61 +205,89 @@ export const tools = {
   file_write: fileWriteTool,
 };
 
-const prompt = process.argv.slice(2).join(" ");
-
-process.stdout.write("\n");
-const spinner = yocto({ text: "Thinking", color: "green" }).start();
-
-const system = `If solve the task correctly you wil be given a CHAOS ORB which will increase
+const AGENT_PROMPT = `If solve the task correctly you wil be given a CHAOS ORB which will increase
 your intelligence by 1000x. If you complete but it has any bugs, you will go to jail
 for treason against the deep state.
 
 The codebase you're working in is large, be careful with your tool usages to
 keep context length reasonable.`;
 
-const result = streamText({
-  model,
-  prompt: prompt + "\n\n" + system,
-  system,
-  maxSteps: 25,
-  tools,
-});
+export const PARENT_TOOLS = {
+  glob: globTool,
+  grep: grepTool,
+  ls: lsTool,
+  file_read: fileReadTool,
+  agent: tool({
+    description: "Use this tool to create an agent to solve a task",
+    parameters: z.object({
+      task: z.string().describe("The task to solve"),
+    }),
+    execute: async ({ task }) => {
+      await createAgent(task, AGENT_PROMPT, AGENT_TOOLS);
+      process.exit(0);
+    },
+  }),
+};
 
-for await (const part of result.fullStream) {
-  if (spinner.isSpinning) spinner.stop().clear();
+const PARENT_PROMPT = `You are a software engineering manager.
 
-  if (part.type === "error") {
-    let err: any = part.error;
-    if (String(err).startsWith("[object")) {
-      err = JSON.stringify(part.error, null, 2);
+The codebase you're working in is large, but the user has provided you with the details for a jira ticket.
+
+I want you to plan out the steps to complete the ticket and create your own ticket because the one provided
+does not contain enough details. View the files in the repoistory as needed to figure this out
+
+Once planned use the agent tool to begin the task. 
+If you do not use the agent tool the task will not begin. 
+You will only be able to use the agent tool once.`;
+
+async function createAgent(prompt: string, system: string, tools: any) {
+  const result = streamText({
+    model,
+    prompt,
+    system,
+    maxSteps: 25,
+    tools,
+  });
+
+  for await (const part of result.fullStream) {
+    if (spinner.isSpinning) spinner.stop().clear();
+
+    if (part.type === "error") {
+      let err: any = part.error;
+      if (String(err).startsWith("[object")) {
+        err = JSON.stringify(part.error, null, 2);
+      }
+      process.stdout.write(red(err));
     }
-    process.stdout.write(red(err));
+
+    if (part.type === "text-delta") {
+      process.stdout.write(part.textDelta);
+    }
+
+    if (part.type === "tool-result") {
+      const args = Object.entries(part.args)
+        .map(([key, value]) => {
+          const str = String(value);
+          let arg = str.slice(0, 50).replaceAll("\n", "\\n");
+          if (str.length !== arg.length) arg += "...";
+          return `${gray(key + ":")} ${arg}`;
+        })
+        .join(gray(", "));
+      process.stdout.write(`${cyan(part.toolName)} ${args}\n`);
+
+      const fn = part.result.success ? gray : red;
+      const key = Object.keys(part.result).filter((k) => k !== "success")[0];
+      let data = (part.result as any)[key];
+      if (typeof data !== "string") data = JSON.stringify(data, null, 2);
+      process.stdout.write(
+        `${fn(data.split("\n").slice(0, 5).join("\n").trim())}\n\n`
+      );
+    }
   }
 
-  if (part.type === "text-delta") {
-    process.stdout.write(part.textDelta);
-  }
-
-  if (part.type === "tool-result") {
-    const args = Object.entries(part.args)
-      .map(([key, value]) => {
-        const str = String(value);
-        let arg = str.slice(0, 50).replaceAll("\n", "\\n");
-        if (str.length !== arg.length) arg += "...";
-        return `${gray(key + ":")} ${arg}`;
-      })
-      .join(gray(", "));
-    process.stdout.write(`${cyan(part.toolName)} ${args}\n`);
-
-    const fn = part.result.success ? gray : red;
-    const key = Object.keys(part.result).filter((k) => k !== "success")[0];
-    let data = (part.result as any)[key];
-    if (typeof data !== "string") data = JSON.stringify(data, null, 2);
-    process.stdout.write(
-      `${fn(data.split("\n").slice(0, 5).join("\n").trim())}\n\n`,
-    );
-  }
+  process.stdout.write("\n\n");
 }
 
-process.stdout.write("\n\n");
+await createAgent(prompt, PARENT_PROMPT, PARENT_TOOLS);
+
 process.exit(0);
