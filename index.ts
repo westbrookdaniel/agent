@@ -17,6 +17,18 @@ const rl = readline.createInterface({
   output: process.stdout,
 });
 
+// Function to read from STDIN
+async function readFromStdin(): Promise<string> {
+  const chunks: Buffer[] = [];
+  return new Promise((resolve, reject) => {
+    process.stdin.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    process.stdin.on("end", () => {
+      resolve(Buffer.concat(chunks).toString().trim());
+    });
+    process.stdin.on("error", (err) => reject(err));
+  });
+}
+
 // Permissions store
 const permissions = {
   bashAllowedCommands: new Set(), // Set of allowed command names
@@ -26,7 +38,7 @@ const permissions = {
 };
 
 // Helper function to ask for permission
-const askPermission = (promptText: string) => {
+function askPermission(promptText: string) {
   if (process.env.YOLO) {
     return true;
   }
@@ -39,7 +51,7 @@ const askPermission = (promptText: string) => {
       }
     );
   });
-};
+}
 
 const bashTool = tool({
   description: "Executes shell commands in your environment",
@@ -190,7 +202,37 @@ const fileWriteTool = tool({
   },
 });
 
-const prompt = process.argv.slice(2).join(" ");
+// Get input from both STDIN and command line arguments
+async function getInput(): Promise<string> {
+  try {
+    let input = "";
+
+    // Check if STDIN has data being piped
+    if (!process.stdin.isTTY) {
+      const stdinData = await readFromStdin();
+      input += stdinData;
+    }
+
+    // Get command line arguments
+    const argsInput = process.argv.slice(2).join(" ");
+
+    // Combine inputs if both are present, otherwise use whichever is available
+    if (input && argsInput) {
+      input = `${input}\n${argsInput}`;
+    } else if (argsInput) {
+      input = argsInput;
+    }
+
+    if (!input) {
+      throw new Error("No input provided via STDIN or command line arguments");
+    }
+
+    return input.trim();
+  } catch (error: any) {
+    console.error(red("Error reading input:"), error.message);
+    process.exit(1);
+  }
+}
 
 process.stdout.write("\n");
 const spinner = yocto({ text: "Thinking", color: "green" }).start();
@@ -233,17 +275,22 @@ export const PARENT_TOOLS = {
     description: "Use this tool to confirm the task is complete",
     parameters: z.object({
       score: z.number().describe("The score of the task 0-100"),
+      changeSummary: z
+        .string()
+        .describe(
+          "A summary of the changes made to the codebase to complete the task"
+        ),
       incompleteReason: z
         .string()
         .describe(
           "If the task is not complete, provide a reason as to why it might not be complete"
         ),
     }),
-    execute: async ({ score, incompleteReason }) => {
+    execute: async ({ score, incompleteReason, changeSummary }) => {
+      process.stdout.write("\n\n");
       process.stdout.write(`Task completed with score ${score} out of 100\n\n`);
-      if (incompleteReason) {
-        process.stdout.write(`Incomplete reason: ${incompleteReason}\n\n`);
-      }
+      process.stdout.write(`Incomplete reason: ${incompleteReason}\n\n`);
+      process.stdout.write(`Change summary: ${changeSummary}\n\n`);
       process.exit(0);
     },
   }),
@@ -315,6 +362,10 @@ async function createAgent(prompt: string, system: string, tools: any) {
   process.stdout.write("\n\n");
 }
 
-await createAgent(prompt, PARENT_PROMPT, PARENT_TOOLS);
-
-process.exit(0);
+try {
+  const prompt = await getInput();
+  await createAgent(prompt, PARENT_PROMPT, PARENT_TOOLS);
+} catch (error: any) {
+  console.error(red("Fatal error:"), error.message);
+  process.exit(1);
+}
