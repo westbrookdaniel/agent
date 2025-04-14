@@ -232,10 +232,19 @@ export const PARENT_TOOLS = {
   complete: tool({
     description: "Use this tool to confirm the task is complete",
     parameters: z.object({
-      score: z.number().describe("The score of the task"),
+      score: z.number().describe("The score of the task 0-100"),
+      incompleteReason: z
+        .string()
+        .describe(
+          "If the task is not complete, provide a reason as to why it might not be complete"
+        ),
     }),
-    execute: async ({ score }) => {
+    execute: async ({ score, incompleteReason }) => {
       process.stdout.write(`Task completed with score ${score} out of 100\n\n`);
+      if (incompleteReason) {
+        process.stdout.write(`Incomplete reason: ${incompleteReason}\n\n`);
+      }
+      process.exit(0);
     },
   }),
 };
@@ -252,7 +261,8 @@ If you do not use the agent tool the task will not begin.
 You will only be able to use the agent tool once.
 
 Once compelted review it's output and rate it's changes as meeting the originally provided data.
-Give a score on the scale of 0-100 using the complete tool.
+Give a score on the scale of 0-100 using the complete tool. Consider every minute detail. Also
+provide any details as to why it might possibly not be compelted.
 
 If you are unsure about if it is possible, give a score of 0.`;
 
