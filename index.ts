@@ -6,9 +6,9 @@ import fs from "fs/promises";
 import { promisify } from "util";
 import child_process from "child_process";
 import { z } from "zod";
-import { xai } from "@ai-sdk/xai";
+import { anthropic } from "@ai-sdk/anthropic";
 
-const model = xai("grok-3-mini-beta");
+const model = anthropic("claude-3-5-sonnet-20241022");
 
 const exec = promisify(child_process.exec);
 
@@ -223,8 +223,19 @@ export const PARENT_TOOLS = {
       task: z.string().describe("The task to solve"),
     }),
     execute: async ({ task }) => {
+      process.stdout.write("\n\n");
       await createAgent(task, AGENT_PROMPT, AGENT_TOOLS);
-      process.exit(0);
+      const gitDiff = await exec("git diff");
+      return { success: true, gitDiff };
+    },
+  }),
+  complete: tool({
+    description: "Use this tool to confirm the task is complete",
+    parameters: z.object({
+      score: z.number().describe("The score of the task"),
+    }),
+    execute: async ({ score }) => {
+      process.stdout.write(`Task completed with score ${score} out of 100\n\n`);
     },
   }),
 };
@@ -238,7 +249,12 @@ does not contain enough details. View the files in the repoistory as needed to f
 
 Once planned use the agent tool to begin the task. 
 If you do not use the agent tool the task will not begin. 
-You will only be able to use the agent tool once.`;
+You will only be able to use the agent tool once.
+
+Once compelted review it's output and rate it's changes as meeting the originally provided data.
+Give a score on the scale of 0-100 using the complete tool.
+
+If you are unsure about if it is possible, give a score of 0.`;
 
 async function createAgent(prompt: string, system: string, tools: any) {
   const result = streamText({
@@ -265,6 +281,7 @@ async function createAgent(prompt: string, system: string, tools: any) {
     }
 
     if (part.type === "tool-result") {
+      process.stdout.write("\n\n");
       const args = Object.entries(part.args)
         .map(([key, value]) => {
           const str = String(value);
