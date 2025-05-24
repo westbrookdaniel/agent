@@ -2,21 +2,7 @@
 
 > [!WARNING]  
 > No guarantees that this works, or works well
-
-A command-line AI agent tool built that provides a Claude Code or Cursor Agent like experience.
-
-## Features
-
-- **Single File**: Simple to setup, tweak, and refactor
-- **Permission-Based Security**: Asks for permission before executing potentially dangerous operations
-- **Built-in Tools**:
-  - `bash`: Executes shell commands with permission controls
-  - `glob`: Finds files based on pattern matching
-  - `grep`: Searches for patterns in file contents
-  - `ls`: Lists files and directories
-  - `file_read`: Reads the contents of files
-  - `file_edit`: Makes targeted edits to specific files
-  - `file_write`: Creates or overwrites files
+> This project may change dramatically at any time
 
 ## Installation
 
@@ -49,10 +35,6 @@ bun compile
 ```
 
 This will create an executable file named `agent` that you can run directly.
-
-## Environment Variables
-
-- `YOLO`: If set, bypasses permission prompts (use with caution)
 
 ## Development
 
