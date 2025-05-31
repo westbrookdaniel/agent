@@ -1,4 +1,4 @@
-import { dim } from "yoctocolors";
+import { dim, magenta } from "yoctocolors";
 import { readFileSync, watch } from "fs";
 import {
   bashTool,
@@ -23,22 +23,30 @@ const tools = {
   file_write: fileWriteTool,
 };
 
-let idle = false;
+let idle = true;
 
 watch(".", { recursive: true }, async (eventType, filename) => {
+  // AI: make this ignore files that arent in git here
+  // with an if early return
+
   if (idle && eventType === "change" && filename) {
     console.log(`\n${dim("[change]")} ${filename}`);
 
-    idle = false;
-
     const contents = readFileSync(filename, "utf8");
+
+    if (!contents.includes("AI:")) return;
+
+    idle = false;
+    console.log(magenta("[start]\n"));
 
     const prompt = `File \`${filename}\` was modified. Please analyze the changes and provide assistance if needed.
 The codebase you're working in is large, be careful with your tool usages to keep context length reasonable.
+Unless the contents of the file instruct your assitance keep your response exteremly minimal.
 The contents of the changed file are:\n\n${contents}`;
 
     await createAgent(prompt, prompt, tools);
 
+    console.log(magenta("[end]"));
     idle = true;
   }
 });

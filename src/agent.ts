@@ -1,9 +1,9 @@
 import { streamText } from "ai";
 import yocto from "yocto-spinner";
 import { red, gray, cyan } from "yoctocolors";
-import { anthropic } from "@ai-sdk/anthropic";
+import { google } from "@ai-sdk/google";
 
-const model = anthropic("claude-3-5-sonnet-20241022");
+const model = google("gemini-2.5-flash-preview-04-17");
 
 export async function createAgent(prompt: string, system: string, tools: any) {
   const spinner = yocto({ text: "Thinking", color: "green" }).start();
@@ -24,6 +24,7 @@ export async function createAgent(prompt: string, system: string, tools: any) {
       if (String(err).startsWith("[object")) {
         err = JSON.stringify(part.error, null, 2);
       }
+      process.stdout.write("\n");
       process.stdout.write(red(err));
     }
 
@@ -32,7 +33,6 @@ export async function createAgent(prompt: string, system: string, tools: any) {
     }
 
     if (part.type === "tool-result") {
-      process.stdout.write("\n\n");
       const args = Object.entries(part.args)
         .map(([key, value]) => {
           const str = String(value);
