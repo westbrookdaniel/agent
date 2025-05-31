@@ -1,10 +1,10 @@
 {
   "name": "agent",
-  "module": "index.ts",
+  "module": "src/index.ts",
   "type": "module",
   "scripts": {
-    "dev": "bun run ./index.ts",
-    "compile": "bun build ./index.ts --compile --outfile agent"
+    "dev": "bun run ./src/index.ts",
+    "compile": "bun build ./src/index.ts --compile --outfile agent"
   },
   "devDependencies": {
     "@types/bun": "latest"
