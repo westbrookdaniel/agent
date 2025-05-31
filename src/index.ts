@@ -31,10 +31,10 @@ const exec = promisify(child_process.exec);
 
 watch(".", { recursive: true }, async (eventType, filename) => {
   if (idle && eventType === "change" && filename) {
-    const gitCheck = await exec(
+    const { stderr } = await exec(
       `git ls-files --error-unmatch "${filename}" 2>/dev/null`,
     );
-    if (gitCheck.exitCode !== 0) {
+    if (stderr) {
       console.log(`${dim("[not in git]")} ${filename} (not in git)`);
       return;
     }
