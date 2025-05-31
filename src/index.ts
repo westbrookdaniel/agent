@@ -10,6 +10,7 @@ import {
   fileWriteTool,
 } from "./tools";
 import { createAgent } from "./agent";
+import { promisify } from "util";
 
 process.stdout.write(`\n${dim("[agent]")}\n\n`);
 
@@ -25,25 +26,27 @@ const tools = {
 
 let idle = true;
 
-watch(".", { recursive: true }, async (eventType, filename) => {
-  // AI: make this ignore files that arent in git here
-  // with an if early return
+const exec = promisify(child_process.exec);
 
+watch(".", { recursive: true }, async (eventType, filename) => {
   if (idle && eventType === "change" && filename) {
-    const gitCheck = await tools.bash({ command: `git ls-files --error-unmatch ${filename}` });
+    const gitCheck = await exec(
+      `git ls-files --error-unmatch "${filename}" 2>/dev/null`,
+    );
     if (gitCheck.exitCode !== 0) {
-      console.log(`\n${dim("[ignore]")} ${filename} (not in git)`);
+      console.log(`${dim("[not in git]")} ${filename} (not in git)`);
       return;
     }
 
-    console.log(`\n${dim("[change]")} ${filename}`);
-
     const contents = readFileSync(filename, "utf8");
 
-    if (!contents.includes("AI:")) return;
+    if (!contents.includes("AI:")) {
+      console.log(`${dim("[no AI:]")} ${filename}`);
+      return;
+    }
 
     idle = false;
-    console.log(magenta("[start]\n"));
+    console.log(magenta(`[start]  ${filename}\n`));
 
     const prompt = `File \`${filename}\` was modified. Please analyze the changes and provide assistance if needed.
 The codebase you're working in is large, be careful with your tool usages to keep context length reasonable.
