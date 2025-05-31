@@ -11,6 +11,7 @@ import {
 } from "./tools";
 import { createAgent } from "./agent";
 import { promisify } from "util";
+import child_process from "child_process";
 
 process.stdout.write(`\n${dim("[agent]")}\n\n`);
 
