@@ -31,10 +31,9 @@ const exec = promisify(child_process.exec);
 
 watch(".", { recursive: true }, async (eventType, filename) => {
   if (idle && eventType === "change" && filename) {
-    const { stderr } = await exec(
-      `git ls-files --error-unmatch "${filename}" 2>/dev/null`,
-    );
-    if (stderr) {
+    try {
+      await exec(`git ls-files --error-unmatch "${filename}" 2>/dev/null`);
+    } catch {
       console.log(`${dim("[not in git]")} ${filename} (not in git)`);
       return;
     }
@@ -42,7 +41,7 @@ watch(".", { recursive: true }, async (eventType, filename) => {
     const contents = readFileSync(filename, "utf8");
 
     if (!contents.includes("AI:")) {
-      console.log(`${dim("[no AI:]")} ${filename}`);
+      console.log(`${dim("[no request]")} ${filename}`);
       return;
     }
 
