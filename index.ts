@@ -1,4 +1,4 @@
-import { generateText, streamText, tool } from "ai";
+import { streamText, tool } from "ai";
 import yocto from "yocto-spinner";
 import { red, gray, cyan, magenta } from "yoctocolors";
 import readline from "readline";
@@ -39,16 +39,13 @@ const permissions = {
 
 // Helper function to ask for permission
 function askPermission(promptText: string) {
-  if (process.env.YOLO) {
-    return true;
-  }
   return new Promise((resolve) => {
     return rl.question(
       `${magenta("?")} ${promptText} ${gray("(y/n)")} `,
       (answer) => {
         process.stdout.write("\n");
         return resolve(answer.toLowerCase() === "y");
-      }
+      },
     );
   });
 }
@@ -254,65 +251,6 @@ for treason against the deep state.
 The codebase you're working in is large, be careful with your tool usages to
 keep context length reasonable.`;
 
-export const PARENT_TOOLS = {
-  glob: globTool,
-  grep: grepTool,
-  ls: lsTool,
-  file_read: fileReadTool,
-  agent: tool({
-    description: "Use this tool to create an agent to solve a task",
-    parameters: z.object({
-      task: z.string().describe("The task to solve"),
-    }),
-    execute: async ({ task }) => {
-      process.stdout.write("\n\n");
-      await createAgent(task, AGENT_PROMPT, AGENT_TOOLS);
-      const gitDiff = await exec("git diff");
-      return { success: true, gitDiff };
-    },
-  }),
-  complete: tool({
-    description: "Use this tool to confirm the task is complete",
-    parameters: z.object({
-      score: z.number().describe("The score of the task 0-100"),
-      changeSummary: z
-        .string()
-        .describe(
-          "A summary of the changes made to the codebase to complete the task"
-        ),
-      incompleteReason: z
-        .string()
-        .describe(
-          "If the task is not complete, provide a reason as to why it might not be complete"
-        ),
-    }),
-    execute: async ({ score, incompleteReason, changeSummary }) => {
-      process.stdout.write("\n\n");
-      process.stdout.write(`Task completed with score ${score} out of 100\n\n`);
-      process.stdout.write(`Incomplete reason: ${incompleteReason}\n\n`);
-      process.stdout.write(`Change summary: ${changeSummary}\n\n`);
-      process.exit(0);
-    },
-  }),
-};
-
-const PARENT_PROMPT = `You are a software engineering manager.
-
-The codebase you're working in is large, but the user has provided you with the details for a jira ticket.
-
-I want you to plan out the steps to complete the ticket and create your own ticket because the one provided
-does not contain enough details. View the files in the repoistory as needed to figure this out
-
-Once planned use the agent tool to begin the task. 
-If you do not use the agent tool the task will not begin. 
-You will only be able to use the agent tool once.
-
-Once compelted review it's output and rate it's changes as meeting the originally provided data.
-Give a score on the scale of 0-100 using the complete tool. Consider every minute detail. Also
-provide any details as to why it might possibly not be compelted.
-
-If you are unsure about if it is possible, give a score of 0.`;
-
 async function createAgent(prompt: string, system: string, tools: any) {
   const result = streamText({
     model,
@@ -354,7 +292,7 @@ async function createAgent(prompt: string, system: string, tools: any) {
       let data = (part.result as any)[key];
       if (typeof data !== "string") data = JSON.stringify(data, null, 2);
       process.stdout.write(
-        `${fn(data.split("\n").slice(0, 5).join("\n").trim())}\n\n`
+        `${fn(data.split("\n").slice(0, 5).join("\n").trim())}\n\n`,
       );
     }
   }
@@ -364,7 +302,7 @@ async function createAgent(prompt: string, system: string, tools: any) {
 
 try {
   const prompt = await getInput();
-  await createAgent(prompt, PARENT_PROMPT, PARENT_TOOLS);
+  await createAgent(prompt, AGENT_PROMPT, AGENT_PROMPT);
 } catch (error: any) {
   console.error(red("Fatal error:"), error.message);
   process.exit(1);
