@@ -30,6 +30,12 @@ watch(".", { recursive: true }, async (eventType, filename) => {
   // with an if early return
 
   if (idle && eventType === "change" && filename) {
+    const gitCheck = await tools.bash({ command: `git ls-files --error-unmatch ${filename}` });
+    if (gitCheck.exitCode !== 0) {
+      console.log(`\n${dim("[ignore]")} ${filename} (not in git)`);
+      return;
+    }
+
     console.log(`\n${dim("[change]")} ${filename}`);
 
     const contents = readFileSync(filename, "utf8");
