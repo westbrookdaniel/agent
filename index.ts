@@ -1,4 +1,10 @@
-import { streamText, tool } from "ai";
+import {
+  appendResponseMessages,
+  generateId,
+  streamText,
+  tool,
+  type Message,
+} from "ai";
 import yocto from "yocto-spinner";
 import { red, gray, cyan } from "yoctocolors";
 import fs from "fs/promises";
@@ -135,10 +141,30 @@ const fileWriteTool = tool({
   },
 });
 
+const updateMemoryTool = tool({
+  description: "Updates the memory file with new information",
+  parameters: z.object({
+    content: z.string().describe("Content to append to memory"),
+  }),
+  execute: async ({ content }) => {
+    try {
+      const timestamp = new Date().toISOString();
+      const entry = `\n## ${timestamp}\n${content}\n`;
+      const stats = await safely(fs.stat("./mind.md"));
+      if (!stats) await fs.writeFile("./mind.md", "", "utf8");
+      await fs.appendFile("./mind.md", entry, "utf8");
+      return { success: true, message: "Memory updated successfully" };
+    } catch (error: any) {
+      return { success: false, message: error.message };
+    }
+  },
+});
+
 process.stdout.write("\n");
 const spinner = yocto({ text: "Thinking", color: "green" }).start();
 
 const MEMORY_PROMPT = `Your memory is kept in the file ./mind.md
+You can use the update_memory tool to append to it, or you can interact with it like a normal file
 
 You can read from and write to this file to remember important information across conversations.
 Use this memory to:
@@ -151,12 +177,12 @@ Always update your memory when you learn something important or you want to
 retain any information for later
 `;
 
-async function createAgent(prompt: string) {
+async function triggerAgent(messages: Message[]) {
   const mind = await safely(fs.readFile("./mind.md", "utf8"));
 
   const result = streamText({
     model,
-    prompt,
+    messages,
     system:
       createSystemPrompt() +
       "\n\n" +
@@ -173,6 +199,7 @@ async function createAgent(prompt: string) {
       file_read: fileReadTool,
       file_edit: fileEditTool,
       file_write: fileWriteTool,
+      update_memory: updateMemoryTool,
     },
   });
 
@@ -214,12 +241,77 @@ async function createAgent(prompt: string) {
   }
 
   process.stdout.write("\n\n");
+
+  return (await result.response).messages;
 }
 
 try {
-  const prompt = process.argv.slice(2).join(" ").trim() || "Hi";
-  await createAgent(prompt);
+  let messages: Message[] = [
+    {
+      id: generateId(),
+      role: "user",
+      content: process.argv.slice(2).join(" ").trim() || "Hi",
+    },
+  ];
+
+  while (true) {
+    const responseMessages = await triggerAgent(messages);
+
+    messages = appendResponseMessages({
+      messages,
+      responseMessages,
+    });
+
+    const prompt = await ask();
+    process.stdout.write("\n");
+
+    messages.push({ id: generateId(), role: "user", content: prompt });
+  }
 } catch (error: any) {
   console.error(red("Fatal error:"), error.message);
   process.exit(1);
+}
+
+async function ask(): Promise<string> {
+  process.stdout.write(cyan("You: "));
+
+  return new Promise((resolve) => {
+    let input = "";
+    process.stdin.setRawMode(true);
+    process.stdin.setEncoding("utf8");
+
+    const onData = (key: string) => {
+      // Handle Ctrl+C
+      if (key === "\u0003") {
+        process.exit(0);
+      }
+
+      // Handle Enter
+      if (key === "\r" || key === "\n") {
+        process.stdout.write("\n");
+        process.stdin.setRawMode(false);
+        process.stdin.removeListener("data", onData);
+        resolve(input.trim());
+        return;
+      }
+
+      // Handle Backspace
+      if (key === "\u007f") {
+        if (input.length > 0) {
+          input = input.slice(0, -1);
+          process.stdout.write("\b \b");
+        }
+        return;
+      }
+
+      // Handle regular characters
+      if (key >= " " && key <= "~") {
+        input += key;
+        process.stdout.write(key);
+      }
+    };
+
+    process.stdin.on("data", onData);
+    process.stdin.resume();
+  });
 }
