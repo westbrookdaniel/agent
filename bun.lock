@@ -4,11 +4,11 @@
     "": {
       "name": "agent",
       "dependencies": {
-        "@ai-sdk/amazon-bedrock": "^2.2.4",
-        "@ai-sdk/anthropic": "^1.2.1",
-        "@ai-sdk/google": "^1.2.3",
+        "@ai-sdk/amazon-bedrock": "^2.2.7",
+        "@ai-sdk/anthropic": "^1.2.9",
+        "@ai-sdk/google": "^1.2.10",
         "@ai-sdk/xai": "^1.2.10",
-        "ai": "^4.2.5",
+        "ai": "^4.3.4",
         "yocto-spinner": "^0.2.1",
         "yoctocolors": "^2.1.1",
       },
@@ -16,7 +16,7 @@
         "@types/bun": "latest",
       },
       "peerDependencies": {
-        "typescript": "^5",
+        "typescript": "^5.8.2",
       },
     },
   },
