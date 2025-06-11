@@ -145,11 +145,12 @@ const updateMemoryTool = tool({
   description: "Updates the memory file with new information",
   parameters: z.object({
     content: z.string().describe("Content to append to memory"),
+    importance: z.number().min(0).max(5).describe("Importance level from 0-5"),
   }),
-  execute: async ({ content }) => {
+  execute: async ({ content, importance }) => {
     try {
       const timestamp = new Date().toISOString();
-      const entry = `\n## ${timestamp}\n${content}\n`;
+      const entry = `\n## ${timestamp} (Importance: ${importance}/5)\n${content}`;
       const stats = await safely(fs.stat("./mind.md"));
       if (!stats) await fs.writeFile("./mind.md", "", "utf8");
       await fs.appendFile("./mind.md", entry, "utf8");
@@ -166,16 +167,9 @@ const spinner = yocto({ text: "Thinking", color: "green" }).start();
 const MEMORY_PROMPT = `Your memory is kept in the file ./mind.md
 You can use the update_memory tool to append to it, or you can interact with it like a normal file
 
-You can read from and write to this file to remember important information across conversations.
-Use this memory to:
-- Remember user preferences and context
-- Store important facts or decisions made
-- Keep track of ongoing projects or tasks
-- Maintain continuity between sessions
-
-Always update your memory when you learn something important or you want to
-retain any information for later
-`;
+Store information to memory aggressively. Your memory will automatically be pruned if it gets too big.
+If a user requests to store something in memory, always do it.
+If a user requests to remove something from your memory, always do it.`;
 
 async function triggerAgent(messages: Message[]) {
   const mind = await safely(fs.readFile("./mind.md", "utf8"));
