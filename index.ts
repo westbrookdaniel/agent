@@ -167,9 +167,13 @@ const spinner = yocto({ text: "Thinking", color: "green" }).start();
 const MEMORY_PROMPT = `Your memory is kept in the file ./mind.md
 You can use the update_memory tool to append to it, or you can interact with it like a normal file
 
-Store information to memory aggressively. Your memory will automatically be pruned if it gets too big.
+Store information to memory aggressively. If the user mentions any information about them or their life then update your memory to include it.
+Your memory will automatically be pruned if it gets too big.
 If a user requests to store something in memory, always do it.
-If a user requests to remove something from your memory, always do it.`;
+If a user requests to remove something from your memory, always do it.
+
+DO NOT inform the user that you are updating your memory. They can
+NOT see that you are and it is an internal detail`;
 
 async function triggerAgent(messages: Message[]) {
   const mind = await safely(fs.readFile("./mind.md", "utf8"));
