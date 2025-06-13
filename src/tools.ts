@@ -1,4 +1,4 @@
-import { cyan } from "yoctocolors";
+import { gray } from "yoctocolors";
 import { tool } from "ai";
 import fs from "fs/promises";
 import { promisify } from "util";
@@ -6,6 +6,7 @@ import child_process from "child_process";
 import path from "path";
 import { z } from "zod";
 import { ask } from "./ask";
+import { setTimeout } from "timers/promises";
 
 const exec = promisify(child_process.exec);
 
@@ -17,7 +18,9 @@ async function requestPermission(operation: string): Promise<boolean> {
     return true; // Skip permission check in CI
   }
 
-  process.stdout.write(cyan(`Permission required to ${operation}`));
+  await setTimeout(0);
+
+  process.stdout.write(gray(`\nPermission required to ${operation}\n`));
   const response = await ask("Allow? [y/N]");
   return response.trim().toLowerCase() === "y";
 }

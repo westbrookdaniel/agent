@@ -5,7 +5,7 @@ import {
   type Message,
 } from "ai";
 import yocto, { type Spinner } from "yocto-spinner";
-import { red, gray, cyan } from "yoctocolors";
+import { red, gray, cyan, magenta } from "yoctocolors";
 import { anthropic } from "@ai-sdk/anthropic";
 import { createSystemPrompt } from "../system";
 import {
@@ -61,8 +61,15 @@ async function triggerAgent(messages: Message[]) {
       process.stdout.write(part.textDelta);
     }
 
-    if (part.type === "tool-result") {
-      process.stdout.write("\n\n");
+    if (part.type === "step-finish") {
+      process.stdout.write("\n");
+    }
+
+    if (part.type === "finish") {
+      process.stdout.write("\n");
+    }
+
+    if (part.type === "tool-call") {
       const args = Object.entries(part.args)
         .map(([key, value]) => {
           const str = String(value);
@@ -70,20 +77,22 @@ async function triggerAgent(messages: Message[]) {
           if (str.length !== arg.length) arg += "...";
           return `${gray(key + ":")} ${arg}`;
         })
-        .join(gray(", "));
-      process.stdout.write(`${cyan(part.toolName)} ${args}\n`);
+        .join("\n");
+      process.stdout.write(
+        `\n\n${magenta("[" + part.toolName + "]")}\n${args}\n`,
+      );
+    }
 
+    if (part.type === "tool-result") {
       const fn = part.result.success ? gray : red;
       const key = Object.keys(part.result).filter((k) => k !== "success")[0];
       let data = (part.result as any)[key];
       if (typeof data !== "string") data = JSON.stringify(data, null, 2);
       process.stdout.write(
-        `${fn(data.split("\n").slice(0, 5).join("\n").trim())}\n\n`,
+        `\n${fn(data.split("\n").slice(0, 5).join("\n").trim())}\n\n`,
       );
     }
   }
-
-  process.stdout.write("\n\n");
 
   return (await result.response).messages;
 }
