@@ -191,3 +191,49 @@ export const fileWriteTool = tool({
     }
   },
 });
+
+let todoStore: Array<{
+  id: string;
+  content: string;
+  done: boolean;
+}> = [];
+
+export const todoReadTool = tool({
+  description: "Reads all todo items from memory",
+  parameters: z.object({}),
+  execute: async () => {
+    return {
+      success: true,
+      todos: todoStore,
+      message: todoStore
+        .map((t) => `- [${t.done ? "x" : " "}] ${t.content} (${t.id})`)
+        .join("\n"),
+    };
+  },
+});
+
+export const todoWriteTool = tool({
+  description:
+    "Updates the todo list with provided items. Ensure you provide all the items in the list not just the ones you're updating or creating",
+  parameters: z.object({
+    todos: z
+      .array(
+        z.object({
+          id: z.string().describe("Unique identifier"),
+          content: z.string().describe("Task description"),
+          done: z.boolean().describe("Whether the task is completed"),
+        }),
+      )
+      .describe("Array of todo items"),
+  }),
+  execute: async ({ todos }) => {
+    todoStore = todos;
+    return {
+      success: true,
+      todos: todoStore,
+      message: todoStore
+        .map((t) => `- [${t.done ? "x" : " "}] ${t.content} (${t.id})`)
+        .join("\n"),
+    };
+  },
+});

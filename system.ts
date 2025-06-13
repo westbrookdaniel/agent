@@ -11,6 +11,8 @@ export const createSystemPrompt = () => {
 
   return `You are a CLI coding agent designed to assist with programming tasks.
 
+Your response will be written to the terminal, so you can use ANSI colors and terminal formatting.
+
 ${rules}
 
 The current date is ${new Date().toISOString()}.

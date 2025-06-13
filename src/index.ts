@@ -15,6 +15,8 @@ import {
   fileReadTool,
   fileEditTool,
   fileWriteTool,
+  todoReadTool,
+  todoWriteTool,
 } from "./tools";
 import { ask } from "./ask";
 import { model } from "./model";
@@ -40,6 +42,8 @@ async function triggerAgent(messages: Message[]) {
       file_read: fileReadTool,
       file_edit: fileEditTool,
       file_write: fileWriteTool,
+      todo_read: todoReadTool,
+      todo_write: todoWriteTool,
     },
   });
 
@@ -83,11 +87,21 @@ async function triggerAgent(messages: Message[]) {
     if (part.type === "tool-result") {
       const fn = part.result.success ? gray : red;
       const key = Object.keys(part.result).filter((k) => k !== "success")[0];
-      let data = (part.result as any)[key];
-      if (typeof data !== "string") data = JSON.stringify(data, null, 2);
-      process.stdout.write(
-        `\n${fn(data.split("\n").slice(0, 5).join("\n").trim())}\n\n`,
-      );
+      const result = part.result as any;
+      let data = result.message || result[key];
+      if (typeof data !== "string") {
+        if (Array.isArray(data)) {
+          data = data.join("\n");
+        } else {
+          data = JSON.stringify(data, null, 2);
+        }
+      }
+
+      if (["glob", "grep", "ls", "file_read"].includes(part.toolName)) {
+        data = data.split("\n").slice(0, 5).join("\n");
+      }
+
+      process.stdout.write(`\n${fn(data.trim())}\n\n`);
     }
   }
 
