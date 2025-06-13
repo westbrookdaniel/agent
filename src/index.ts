@@ -17,6 +17,7 @@ import {
   fileWriteTool,
 } from "./tools";
 import { ask } from "./ask";
+import { model } from "./model";
 
 process.stdout.write("\n");
 
