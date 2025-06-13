@@ -21,13 +21,12 @@ import { model } from "./model";
 
 process.stdout.write("\n");
 
-let spinner: Spinner | undefined;
-
-if (!process.env.CI) {
-  spinner = yocto({ text: "Thinking", color: "green" }).start();
-}
-
 async function triggerAgent(messages: Message[]) {
+  let spinner: Spinner | undefined;
+  if (!process.env.CI) {
+    spinner = yocto({ text: "Thinking", color: "green" }).start();
+  }
+
   const result = streamText({
     model,
     messages,
