@@ -1,13 +1,26 @@
+import { cyan } from "yoctocolors";
 import { tool } from "ai";
 import fs from "fs/promises";
 import { promisify } from "util";
 import child_process from "child_process";
 import path from "path";
 import { z } from "zod";
+import { ask } from "./ask";
 
 const exec = promisify(child_process.exec);
 
 const ALLOWED_DIR = process.cwd();
+
+// Request permission for sensitive operations
+async function requestPermission(operation: string): Promise<boolean> {
+  if (process.env.CI === "true") {
+    return true; // Skip permission check in CI
+  }
+
+  process.stdout.write(cyan(`Permission required to ${operation}`));
+  const response = await ask("Allow? [y/N]");
+  return response.trim().toLowerCase() === "y";
+}
 
 // Validate that a file path is within the allowed directory
 function restrictPath(filePath: string) {
@@ -26,6 +39,10 @@ export const bashTool = tool({
     command: z.string().describe("The shell command to execute"),
   }),
   execute: async ({ command }) => {
+    if (!(await requestPermission(`execute \`${command}\``))) {
+      return { success: false, message: "Permission denied" };
+    }
+
     // Prevent dangerous commands (e.g., rm -rf /)
     if (command.match(/(rm\s+-rf\s*\/|sudo|eval|exec\s+[^&|;])/i)) {
       return {
@@ -131,6 +148,10 @@ export const fileEditTool = tool({
     replace: z.string().describe("Replacement string"),
   }),
   execute: async ({ filePath, search, replace }) => {
+    if (!(await requestPermission(`edit file ${filePath}`))) {
+      return { success: false, message: "Permission denied" };
+    }
+
     try {
       const safePath = restrictPath(filePath);
       const content = await fs.readFile(safePath, "utf8");
@@ -152,6 +173,10 @@ export const fileWriteTool = tool({
     content: z.string().describe("Content to write"),
   }),
   execute: async ({ filePath, content }) => {
+    if (!(await requestPermission(`write file ${filePath}`))) {
+      return { success: false, message: "Permission denied" };
+    }
+
     try {
       const safePath = restrictPath(filePath);
 

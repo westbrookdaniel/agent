@@ -109,7 +109,7 @@ try {
       process.exit(0);
     }
 
-    const prompt = await ask();
+    const prompt = await ask("You:");
     process.stdout.write("\n");
 
     messages.push({ id: generateId(), role: "user", content: prompt });

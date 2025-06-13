@@ -1,7 +1,7 @@
 import { cyan } from "yoctocolors";
 
-export async function ask(): Promise<string> {
-  process.stdout.write(cyan("You: "));
+export async function ask(message: string): Promise<string> {
+  process.stdout.write(cyan(message + " "));
 
   return new Promise((resolve) => {
     let input = "";
