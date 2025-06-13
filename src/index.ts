@@ -5,8 +5,7 @@ import {
   type Message,
 } from "ai";
 import yocto, { type Spinner } from "yocto-spinner";
-import { red, gray, cyan, magenta } from "yoctocolors";
-import { anthropic } from "@ai-sdk/anthropic";
+import { red, gray, magenta } from "yoctocolors";
 import { createSystemPrompt } from "../system";
 import {
   bashTool,
@@ -18,8 +17,6 @@ import {
   fileWriteTool,
 } from "./tools";
 import { ask } from "./ask";
-
-const model = anthropic("claude-3-5-sonnet-20241022");
 
 process.stdout.write("\n");
 
