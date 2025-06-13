@@ -2,21 +2,46 @@ import { tool } from "ai";
 import fs from "fs/promises";
 import { promisify } from "util";
 import child_process from "child_process";
+import path from "path";
 import { z } from "zod";
 
 const exec = promisify(child_process.exec);
 
+const ALLOWED_DIR = process.cwd();
+
+// Validate that a file path is within the allowed directory
+function restrictPath(filePath: string) {
+  const resolvedPath = path.resolve(filePath);
+  if (!resolvedPath.startsWith(ALLOWED_DIR)) {
+    throw new Error(
+      `Access denied: Path ${filePath} is outside allowed directory ${ALLOWED_DIR}`,
+    );
+  }
+  return resolvedPath;
+}
+
 export const bashTool = tool({
-  description: "Executes shell commands in your environment",
+  description: "Executes shell commands in a sandboxed environment",
   parameters: z.object({
     command: z.string().describe("The shell command to execute"),
   }),
   execute: async ({ command }) => {
+    // Prevent dangerous commands (e.g., rm -rf /)
+    if (command.match(/(rm\s+-rf\s*\/|sudo|eval|exec\s+[^&|;])/i)) {
+      return {
+        success: false,
+        message: "Potentially dangerous command detected",
+      };
+    }
+
     try {
-      const { stdout, stderr } = await exec(command);
+      const { stdout, stderr } = await exec(command, {
+        cwd: ALLOWED_DIR,
+      });
       return { success: true, output: stdout + stderr };
-    } catch (error: any) {
-      return { success: false, message: error.message };
+    } catch (error) {
+      const message = Error.isError(error) ? error.message : "Unknown error";
+      return { success: false, message };
     }
   },
 });
@@ -28,12 +53,18 @@ export const globTool = tool({
   }),
   execute: async ({ pattern }) => {
     try {
-      const iter = new Bun.Glob(pattern).scan();
+      // Ensure pattern is safe and relative to ALLOWED_DIR
+      const safePattern = path.join(ALLOWED_DIR, pattern);
+      restrictPath(safePattern); // Validate path
+      const iter = new Bun.Glob(pattern).scan({ cwd: ALLOWED_DIR });
       const files = [];
-      for await (const value of iter) files.push(value);
+      for await (const value of iter) {
+        files.push(path.join(ALLOWED_DIR, value));
+      }
       return { success: true, files };
-    } catch (error: any) {
-      return { success: false, message: error.message };
+    } catch (error) {
+      const message = Error.isError(error) ? error.message : "Unknown error";
+      return { success: false, message };
     }
   },
 });
@@ -46,12 +77,14 @@ export const grepTool = tool({
   }),
   execute: async ({ filePath, pattern }) => {
     try {
-      const content = await fs.readFile(filePath, "utf8");
+      const safePath = restrictPath(filePath);
+      const content = await fs.readFile(safePath, "utf8");
       const regex = new RegExp(pattern);
       const matches = content.split("\n").filter((line) => regex.test(line));
       return { success: true, matches };
-    } catch (error: any) {
-      return { success: false, message: error.message };
+    } catch (error) {
+      const message = Error.isError(error) ? error.message : "Unknown error";
+      return { success: false, message };
     }
   },
 });
@@ -63,10 +96,12 @@ export const lsTool = tool({
   }),
   execute: async ({ dirPath }) => {
     try {
-      const items = await fs.readdir(dirPath);
+      const safePath = restrictPath(dirPath);
+      const items = await fs.readdir(safePath);
       return { success: true, items };
-    } catch (error: any) {
-      return { success: false, message: error.message };
+    } catch (error) {
+      const message = Error.isError(error) ? error.message : "Unknown error";
+      return { success: false, message };
     }
   },
 });
@@ -78,10 +113,12 @@ export const fileReadTool = tool({
   }),
   execute: async ({ filePath }) => {
     try {
-      const content = await fs.readFile(filePath, "utf8");
+      const safePath = restrictPath(filePath);
+      const content = await fs.readFile(safePath, "utf8");
       return { success: true, content };
-    } catch (error: any) {
-      return { success: false, message: error.message };
+    } catch (error) {
+      const message = Error.isError(error) ? error.message : "Unknown error";
+      return { success: false, message };
     }
   },
 });
@@ -95,12 +132,15 @@ export const fileEditTool = tool({
   }),
   execute: async ({ filePath, search, replace }) => {
     try {
-      const content = await fs.readFile(filePath, "utf8");
+      const safePath = restrictPath(filePath);
+      const content = await fs.readFile(safePath, "utf8");
       const newContent = content.replace(search, replace);
-      await fs.writeFile(filePath, newContent, "utf8");
+
+      await fs.writeFile(safePath, newContent, "utf8");
       return { success: true, message: "File edited successfully" };
-    } catch (error: any) {
-      return { success: false, message: error.message };
+    } catch (error) {
+      const message = Error.isError(error) ? error.message : "Unknown error";
+      return { success: false, message };
     }
   },
 });
@@ -113,10 +153,13 @@ export const fileWriteTool = tool({
   }),
   execute: async ({ filePath, content }) => {
     try {
-      await fs.writeFile(filePath, content, "utf8");
+      const safePath = restrictPath(filePath);
+
+      await fs.writeFile(safePath, content, "utf8");
       return { success: true, message: "File written successfully" };
-    } catch (error: any) {
-      return { success: false, message: error.message };
+    } catch (error) {
+      const message = Error.isError(error) ? error.message : "Unknown error";
+      return { success: false, message };
     }
   },
 });
