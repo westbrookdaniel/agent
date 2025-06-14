@@ -1,24 +1,18 @@
 import { cyan } from "yoctocolors";
+import { stdin, stdout, type Unsub } from "./io";
 
 export async function ask(message: string): Promise<string> {
-  process.stdout.write(cyan(message + " "));
+  stdout.write(cyan(message + " "));
 
-  return new Promise((resolve) => {
+  let unsub: Unsub | undefined;
+
+  const response = await new Promise<string>((resolve) => {
     let input = "";
-    process.stdin.setRawMode(true);
-    process.stdin.setEncoding("utf8");
 
-    const onData = (key: string) => {
-      // Handle Ctrl+C
-      if (key === "\u0003") {
-        process.exit(0);
-      }
-
+    unsub = stdin.onKey((key) => {
       // Handle Enter
       if (key === "\r" || key === "\n") {
-        process.stdout.write("\n");
-        process.stdin.setRawMode(false);
-        process.stdin.removeListener("data", onData);
+        stdout.write("\n");
         resolve(input.trim());
         return;
       }
@@ -27,7 +21,7 @@ export async function ask(message: string): Promise<string> {
       if (key === "\u007f") {
         if (input.length > 0) {
           input = input.slice(0, -1);
-          process.stdout.write("\b \b");
+          stdout.write("\b \b");
         }
         return;
       }
@@ -35,11 +29,12 @@ export async function ask(message: string): Promise<string> {
       // Handle regular characters
       if (key >= " " && key <= "~") {
         input += key;
-        process.stdout.write(key);
+        stdout.write(key);
       }
-    };
-
-    process.stdin.on("data", onData);
-    process.stdin.resume();
+    });
   });
+
+  unsub?.();
+
+  return response;
 }

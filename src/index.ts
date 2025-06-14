@@ -20,8 +20,9 @@ import {
 } from "./tools";
 import { ask } from "./ask";
 import { model } from "./model";
+import { stdout, stderr } from "./io";
 
-process.stdout.write("\n");
+stdout.write("\n");
 
 async function triggerAgent(messages: Message[]) {
   let spinner: Spinner | undefined;
@@ -55,19 +56,19 @@ async function triggerAgent(messages: Message[]) {
       if (String(err).startsWith("[object")) {
         err = JSON.stringify(part.error, null, 2);
       }
-      process.stdout.write(red(err));
+      stdout.write(red(err));
     }
 
     if (part.type === "text-delta") {
-      process.stdout.write(part.textDelta);
+      stdout.write(part.textDelta);
     }
 
     if (part.type === "step-finish") {
-      process.stdout.write("\n");
+      stdout.write("\n");
     }
 
     if (part.type === "finish") {
-      process.stdout.write("\n");
+      stdout.write("\n");
     }
 
     if (part.type === "tool-call") {
@@ -79,9 +80,7 @@ async function triggerAgent(messages: Message[]) {
           return `${gray(key + ":")} ${arg}`;
         })
         .join("\n");
-      process.stdout.write(
-        `\n\n${magenta("[" + part.toolName + "]")}\n${args}\n`,
-      );
+      stdout.write(`\n\n${magenta("[" + part.toolName + "]")}\n${args}\n`);
     }
 
     if (part.type === "tool-result") {
@@ -101,7 +100,7 @@ async function triggerAgent(messages: Message[]) {
         data = data.split("\n").slice(0, 5).join("\n");
       }
 
-      process.stdout.write(`\n${fn(data.trim())}\n\n`);
+      stdout.write(`\n${fn(data.trim())}\n\n`);
     }
   }
 
@@ -130,11 +129,11 @@ try {
     }
 
     const prompt = await ask("You:");
-    process.stdout.write("\n");
+    stdout.write("\n");
 
     messages.push({ id: generateId(), role: "user", content: prompt });
   }
 } catch (error: any) {
-  console.error(red("Fatal error:"), error.message);
+  stderr.write(red("Fatal error: ") + error.message + "\n");
   process.exit(1);
 }

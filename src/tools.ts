@@ -1,4 +1,5 @@
 import { gray } from "yoctocolors";
+import { stdout } from "./io";
 import { tool } from "ai";
 import fs from "fs/promises";
 import { promisify } from "util";
@@ -20,7 +21,7 @@ async function requestPermission(operation: string): Promise<boolean> {
 
   await setTimeout(0);
 
-  process.stdout.write(gray(`\nPermission required to ${operation}\n`));
+  stdout.write(gray(`\nPermission required to ${operation}\n`));
   const response = await ask("Allow? [y/N]");
   return response.trim().toLowerCase() === "y";
 }
